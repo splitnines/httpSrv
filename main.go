@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -20,7 +21,9 @@ func HttpSrv() {
 
 	ip := getLocalIP()
 	port := ":12345"
-	log.Printf("Server running on http://%s%s/\n", ip, port)
+	fmt.Printf("[+] Running Extended HTTP Server on %s port %s\n", ip, port[1:])
+	fmt.Printf("[+] Server URL: (http://%s%s/)\n", ip, port)
+	fmt.Println("[+] Press Ctrl-c to stop the server")
 	log.Fatal(http.ListenAndServe(port, nil))
 }
 
