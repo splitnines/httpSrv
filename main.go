@@ -12,11 +12,15 @@ import (
 )
 
 func main() {
+	HttpSrv()
+}
+
+func HttpSrv() {
 	http.HandleFunc("/", logRequest(fileHandler))
 
 	ip := getLocalIP()
 	port := ":12345"
-	log.Printf("Server running on http:/%s%s/\n", ip, port)
+	log.Printf("Server running on http://%s%s/\n", ip, port)
 	log.Fatal(http.ListenAndServe(port, nil))
 }
 
