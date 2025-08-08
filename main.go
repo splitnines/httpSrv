@@ -71,7 +71,7 @@ func Put(w http.ResponseWriter, r *http.Request) {
 }
 
 func getLocalIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
+	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err != nil {
 		return "localhost"
 	}
