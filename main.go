@@ -7,8 +7,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -25,8 +27,41 @@ func HttpSrv() {
 		ip, port[1:])
 	fmt.Printf("[+] Server URL: (http://%s%s/)\n", ip, port)
 	fmt.Println("[+] Press Ctrl-c to stop the server")
-	go spinner()
+	go catchSigTerm()
 	log.Fatal(http.ListenAndServe(port, nil))
+}
+
+func catchSigTerm() {
+	stop := make(chan struct{})
+	go spinner(stop)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	<-sigChan
+
+	close(stop)
+	fmt.Print("\n[+] Shutting down")
+	for range 5 {
+		fmt.Print(".")
+		time.Sleep(500 * time.Millisecond)
+	}
+	fmt.Println()
+	os.Exit(0)
+}
+
+func spinner(stop <-chan struct{}) {
+	spinChars := []rune{'|', '/', '-', '\\'}
+	i := 0
+	for {
+		select {
+		case <-stop:
+			return
+		default:
+			fmt.Printf("\r%c", spinChars[i%len(spinChars)])
+			i = (i + 1) % len(spinChars)
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }
 
 func fileHandler(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +131,7 @@ func getLocalIP() string {
 func logRequest(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+		clientIp, _, _ := net.SplitHostPort(r.RemoteAddr)
 
 		lrw := &loggingResponseWriter{
 			ResponseWriter: w,
@@ -104,8 +139,8 @@ func logRequest(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next.ServeHTTP(lrw, r)
 
-		fmt.Print("\b")
-		log.Printf("[%s] %s %s - %d (%s)", ip, r.Method, r.URL.Path,
+		fmt.Print("\b") // backspace character to clear the spinner
+		log.Printf("[%s] %s %s - %d (%s)", clientIp, r.Method, r.URL.Path,
 			lrw.statusCode, time.Since(start))
 	}
 }
@@ -118,14 +153,4 @@ type loggingResponseWriter struct {
 func (lrw *loggingResponseWriter) WriteHeader(code int) {
 	lrw.statusCode = code
 	lrw.ResponseWriter.WriteHeader(code)
-}
-
-func spinner() {
-	spinChars := []rune{'|', '/', '-', '\\'}
-	i := 0
-	for {
-		fmt.Printf("\r%c", spinChars[i%len(spinChars)])
-		i = (i + 1) % len(spinChars)
-		time.Sleep(100 * time.Millisecond)
-	}
 }
